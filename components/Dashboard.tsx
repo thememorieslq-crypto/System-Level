@@ -17,7 +17,9 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOverride, onToggleHardcore, onOpenStore }) => {
   const reqXp = getXpRequired(user.level);
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
-  const allCompleted = user.quests.length > 0 && user.quests.every(q => q.completed);
+  const completedCount = user.quests.filter(q => q.completed).length;
+  const allCompleted = user.quests.length > 0 && completedCount === user.quests.length;
+  const isLocked = completedCount > 0;
   
   const [viewingCycle, setViewingCycle] = useState(user.currentCycleDay);
   const roadmapRef = useRef<HTMLDivElement>(null);
@@ -25,7 +27,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   const [systemLog, setSystemLog] = useState('INIT_CORE...');
 
   const isPrestige = user.currentCycleDay > 30;
-  const displayPhase = isPrestige ? `OVERCLOCK_MK_${user.currentCycleDay - 30}` : `PHASE_${user.currentCycleDay.toString().padStart(2, '0')}`;
+  const displayPhase = isPrestige ? `OC_MK_${user.currentCycleDay - 30}` : `PHASE_${user.currentCycleDay.toString().padStart(2, '0')}`;
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -74,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
       <div className="grid grid-cols-3 gap-2 shrink-0">
           <div className={`flex items-center justify-between px-3 py-1.5 tech-border ${user.heatLevel >= 4 ? 'bg-orange-600/20 border-orange-500' : 'bg-white/5 border-white/10'}`}>
               <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase">HEAT</span>
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">HEAT_LOAD</span>
                   <div className="flex gap-0.5 mt-0.5">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className={`w-1.5 h-1 ${i < Math.floor(user.heatLevel) ? (user.heatLevel >= 4 ? 'bg-orange-500' : 'bg-[#5B8CFF]') : 'bg-white/5'}`}></div>
@@ -84,13 +86,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
           </div>
           <button onClick={onOpenStore} className="flex items-center justify-between px-3 py-1.5 tech-border bg-[#5B8CFF]/5 border-[#5B8CFF]/20 active:scale-95 transition-all">
               <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-[#5B8CFF] uppercase">MODULES</span>
+                  <span className="mono text-[6px] font-black text-[#5B8CFF] uppercase tracking-tighter">STORAGE</span>
                   <ShoppingCart size={10} className="text-[#5B8CFF] mt-0.5" />
               </div>
           </button>
           <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
               <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase">CORE_FRAG</span>
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">FRAGMENTS</span>
                   <div className="flex items-center gap-1 mt-0.5">
                     <Hexagon size={8} className="text-[#5B8CFF] fill-[#5B8CFF]/20" />
                     <span className="mono text-[8px] font-black text-white">{user.coreFragments}</span>
@@ -112,23 +114,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
       <div className="flex flex-col gap-3 shrink-0">
         <div className="flex justify-between items-start border-b border-[#5B8CFF]/10 pb-3">
           <div className="flex flex-col">
-            <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic">D_{user.calendarDay.toString().padStart(2, '0')}</h1>
+            <div className="flex items-center gap-2 mb-0.5">
+               <CalendarDays size={10} className="text-gray-600" />
+               <span className="mono text-[8px] text-gray-600 font-bold uppercase tracking-widest italic">UPTIME: {user.calendarDay}D</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic">CORE_INIT</h1>
             <div className="flex items-center gap-2 mt-1">
-                <span className="mono text-[8px] text-gray-600 uppercase tracking-widest font-black">LVL: {user.level}</span>
+                <span className="mono text-[8px] text-white/50 uppercase tracking-widest font-black">LVL_{user.level}</span>
                 {user.archetype && <span className="mono text-[8px] font-black text-[#5B8CFF]">[{user.archetype}]</span>}
             </div>
           </div>
           <div className="flex flex-col items-end text-right">
              <button 
+                disabled={isLocked}
                 onClick={onToggleHardcore}
-                className={`px-2 py-1 border mono text-[7px] font-black uppercase mb-2 transition-all ${user.hardcoreActive ? 'bg-red-500/20 border-red-500 text-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-transparent border-white/10 text-gray-600'}`}
+                className={`flex items-center gap-2 px-2 py-1 border mono text-[7px] font-black uppercase mb-2 transition-all ${
+                    user.hardcoreActive 
+                        ? (isLocked ? 'bg-red-500/5 border-red-500/20 text-red-900' : 'bg-red-500/20 border-red-500 text-red-500 shadow-[0_0_10px_#ef4444]') 
+                        : (isLocked ? 'bg-transparent border-white/5 text-gray-800' : 'bg-transparent border-white/10 text-gray-600 active:scale-95')
+                }`}
              >
+                {isLocked && <Lock size={8} />}
                 {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_OFF'}
              </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
-                <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1">
-                    {allCompleted ? 'STB_STAY' : 'EXEC_RUN'}
+                <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1 tracking-tighter">
+                    STRATEGIC_STEP
                 </span>
              </div>
           </div>
@@ -186,7 +198,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                <div className="flex flex-col gap-1 items-center">
                   <CheckCircle2 size={32} className="text-[#5B8CFF] animate-bounce" />
                   <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight">PHASE_SECURED</h3>
-                  <p className="mono text-[8px] text-gray-500">NEXT_SYNC_PROMPT: {timeToNextDay}</p>
+                  <p className="mono text-[8px] text-gray-500 uppercase">NEXT_SYNC_PROMPT: {timeToNextDay}</p>
                </div>
                
                <div className="w-full flex flex-col gap-2">
@@ -194,8 +206,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                   <div className="grid grid-cols-1 gap-2">
                       <button onClick={() => onOverride('STABLE')} className="group flex items-center justify-between p-3 tech-border border-[#5B8CFF]/20 bg-[#5B8CFF]/5 active:scale-95 transition-all">
                           <div className="flex flex-col items-start text-left">
-                              <span className="mono text-[8px] font-black uppercase text-[#5B8CFF]">ADVANCE_PROTOCOL</span>
-                              <span className="mono text-[6px] text-gray-500 uppercase">Heat +1 | Phase +1</span>
+                              <span className="mono text-[8px] font-black uppercase text-[#5B8CFF]">ADVANCE_PHASE</span>
+                              <span className="mono text-[6px] text-gray-500 uppercase">Skip Current Challenges</span>
                           </div>
                           <FastForward size={14} className="text-[#5B8CFF]" />
                       </button>
@@ -203,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               {user.quests.map(q => (
                 <QuestEntry 
                   key={q.id} 
@@ -225,33 +237,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   );
 };
 
-const QuestEntry: React.FC<{ 
-  quest: Quest; 
-  onClick: () => void; 
-  isArchetypeBonus?: boolean;
-}> = ({ quest, onClick, isArchetypeBonus }) => (
-  <button 
-    disabled={quest.completed} 
-    onClick={onClick}
-    className={`w-full group relative flex items-center justify-between p-4 border-l-2 transition-all duration-300 ${
-        quest.completed ? 'border-gray-800 bg-transparent opacity-20' : 'border-[#5B8CFF] bg-[#1A1F2E] active:scale-[0.98] shadow-sm'
-    }`}
-  >
-    <div className="flex flex-col text-left">
-        <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-black uppercase leading-none tracking-tight">{quest.type}</span>
-            {isArchetypeBonus && !quest.completed && (
-                <div className="flex items-center gap-1 bg-[#5B8CFF]/20 px-1 border border-[#5B8CFF]/40">
-                    <Sparkles size={8} className="text-[#5B8CFF]" />
-                    <span className="mono text-[6px] font-black text-[#5B8CFF]">SYNC+</span>
-                </div>
-            )}
-        </div>
-        <span className="mono text-[8px] text-gray-500 font-bold uppercase tracking-widest">OBJ: {quest.target} {quest.type === ExerciseType.Plank ? 'SEC' : 'REP'}</span>
-    </div>
-    <div className="flex items-center gap-3">
-        <span className="mono text-[9px] font-black text-[#5B8CFF]">+{quest.xp}XP</span>
-        {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40 group-hover:translate-x-1 transition-transform" />}
-    </div>
-  </button>
-);
+const QuestEntry: React.FC<{ quest: Quest; onClick: () => void; isArchetypeBonus?: boolean }> = ({ quest, onClick, isArchetypeBonus }) => {
+  const isTimer = quest.type === ExerciseType.Plank;
+  return (
+    <button 
+      disabled={quest.completed} 
+      onClick={onClick}
+      className={`w-full group relative flex items-center justify-between p-4 border-l-2 transition-all duration-300 ${
+          quest.completed 
+            ? 'border-gray-800 bg-transparent opacity-20 scale-[0.98]' 
+            : 'border-[#5B8CFF] bg-[#141824] active:scale-[0.97] shadow-xl'
+      }`}
+    >
+      <div className="flex flex-col text-left">
+          <div className="flex items-center gap-2 mb-1">
+              <h4 className={`text-[15px] font-black uppercase leading-tight tracking-tight ${quest.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                {quest.type}
+              </h4>
+              {isArchetypeBonus && !quest.completed && (
+                  <Sparkles size={10} className="text-[#5B8CFF] animate-pulse" />
+              )}
+          </div>
+          <span className="mono text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+            OBJ: {quest.target} {isTimer ? 'SEC' : 'REP'}
+          </span>
+      </div>
+      <div className="flex items-center gap-4">
+          <span className={`mono text-[10px] font-black ${quest.completed ? 'text-gray-600' : 'text-[#5B8CFF]'}`}>
+            +{quest.xp}XP
+          </span>
+          {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40 group-hover:text-[#5B8CFF]" />}
+          {quest.completed && <CheckCircle2 size={14} className="text-emerald-500/50" />}
+      </div>
+    </button>
+  );
+};

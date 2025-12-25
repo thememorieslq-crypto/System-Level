@@ -2,7 +2,7 @@
 import React from 'react';
 import { UserState } from '../types';
 import { getXpRequired } from '../utils/calculations';
-import { LogOut, Award, Flame, Database, Cpu, Milestone, Binary, TrendingUp, Zap, Hexagon, Shield, ListTodo, Medal } from 'lucide-react';
+import { LogOut, Award, Flame, Database, Cpu, Milestone, Binary, TrendingUp, Zap, Hexagon, Shield, ListTodo, Medal, Calendar } from 'lucide-react';
 
 export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ user, onReset }) => {
   const reqXp = getXpRequired(user.level);
@@ -68,10 +68,10 @@ export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ us
         </div>
         <div className="tech-border bg-[#0A0A0A] p-4 flex flex-col gap-1 shadow-inner">
             <div className="flex items-center gap-2 mb-1">
-                <Hexagon size={12} className="text-[#5B8CFF]" />
-                <span className="mono text-[8px] text-gray-500 font-bold uppercase">FRAGMENTS</span>
+                <Calendar size={12} className="text-[#5B8CFF]" />
+                <span className="mono text-[8px] text-gray-500 font-bold uppercase">SYSTEM_DAY</span>
             </div>
-            <span className="text-2xl font-black text-white">{user.coreFragments}</span>
+            <span className="text-2xl font-black text-white">{user.calendarDay}D</span>
             <div className="h-1 bg-white/5 w-full mt-1">
                 <div className="h-full bg-[#5B8CFF] shadow-[0_0_5px_#5B8CFF]" style={{ width: '100%' }}></div>
             </div>
@@ -124,7 +124,7 @@ export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ us
         >
           <LogOut size={12} /> TERMINATE_SESSION_OS
         </button>
-        <p className="mono text-[7px] text-gray-900 tracking-[0.8em] uppercase">SYSTEM_CORE_V.2.6.0</p>
+        <p className="mono text-[7px] text-gray-900 tracking-[0.8em] uppercase">SYSTEM_CORE_V.2.7.0</p>
       </div>
     </div>
   );

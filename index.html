@@ -24,15 +24,22 @@
             --surface: #141824;
             --card: #1A1F2E;
         }
+        html, body {
+            height: 100%;
+            height: -webkit-fill-available;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+        }
         body {
             font-family: 'Space Grotesk', sans-serif;
-            background-color: var(--bg);
             color: #FFFFFF;
-            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             font-size: 14px;
-            height: 100vh;
+            /* Use dynamic viewport height for mobile */
+            height: 100dvh;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
         
@@ -117,7 +124,7 @@
 </head>
 <body class="antialiased">
     <div class="scanline"></div>
-    <div id="root" class="h-full"></div>
+    <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
