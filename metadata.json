@@ -1,0 +1,5 @@
+{
+  "name": "System: Level Up",
+  "description": "A gamified fitness and discipline application inspired by RPG 'System' mechanics, featuring level progression, automatic difficulty scaling, and a dark HUD-style interface.",
+  "requestFramePermissions": []
+}
