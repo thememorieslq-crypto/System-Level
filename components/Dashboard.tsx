@@ -19,7 +19,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
   const completedCount = user.quests.filter(q => q.completed).length;
   const allCompleted = user.quests.length > 0 && completedCount === user.quests.length;
-  // Блокировка кнопки, если есть выполненные квесты
+  
+  // Идея №2: Блокировка Hardcore модуля, если хоть одно задание выполнено
   const isHardcoreLocked = user.quests.some(q => q.completed);
   
   const roadmapRef = useRef<HTMLDivElement>(null);
@@ -54,12 +55,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
     return () => clearInterval(timer);
   }, []);
 
+  // Идея №5: Автоматическое центрирование текущего дня в дорожной карте
   useEffect(() => {
     if (roadmapRef.current) {
-        const active = roadmapRef.current.children[user.currentCycleDay - 1] as HTMLElement;
-        if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        const children = roadmapRef.current.children;
+        const activeIndex = user.currentCycleDay - 1;
+        if (children[activeIndex]) {
+          children[activeIndex].scrollIntoView({
+            behavior: 'smooth',
+            inline: 'center',
+            block: 'nearest'
+          });
+        }
     }
   }, [user.currentCycleDay]);
+
+  const handleHardcoreClick = () => {
+    if (isHardcoreLocked) {
+      setSystemLog("ERROR: RE-CONFIG_BLOCKED_DURING_CYCLE");
+      return;
+    }
+    onToggleHardcore();
+  };
 
   return (
     <div className={`p-4 pt-6 flex flex-col gap-4 animate-in fade-in duration-700 h-full overflow-hidden relative ${user.heatLevel >= 4 ? 'system-glitch' : ''}`}>
@@ -120,18 +137,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
           </div>
           <div className="flex flex-col items-end text-right gap-2">
              <button 
-                disabled={isHardcoreLocked}
-                onClick={onToggleHardcore}
+                onClick={handleHardcoreClick}
                 className={`flex items-center gap-2 px-3 py-1.5 border mono text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(0,0,0,0.5)] active:scale-95 ${
                     user.hardcoreActive 
                     ? 'bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' 
                     : isHardcoreLocked 
-                        ? 'bg-white/5 border-white/10 text-gray-700 opacity-50 cursor-not-allowed'
+                        ? 'bg-gray-900 border-gray-800 text-gray-600 opacity-50'
                         : 'bg-[#1A1F2E] border-[#5B8CFF]/30 text-[#5B8CFF] hover:border-[#5B8CFF]'
                 }`}
              >
-                <Flame size={12} className={user.hardcoreActive ? 'animate-pulse fill-white' : ''} />
-                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_OFF'}
+                {isHardcoreLocked ? <Lock size={10} /> : <Flame size={12} className={user.hardcoreActive ? 'animate-pulse fill-white' : ''} />}
+                {user.hardcoreActive ? 'HARDCORE_ON' : isHardcoreLocked ? 'LOCKED' : 'HARDCORE_OFF'}
              </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>

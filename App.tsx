@@ -188,13 +188,11 @@ const App: React.FC = () => {
         levelUpDetected = true;
       }
 
-      // Немедленное и синхронное управление оверлеями
+      // Идея №3: Мгновенный запуск оверлеев
       if (levelUpDetected) {
         setShowLevelUp(true);
-        // Если завершен и цикл, ставим в очередь
         if (cycleJustFinished) setPendingDayComplete(true);
       } else if (cycleJustFinished) {
-        // Если уровня нет, сразу показываем успех цикла
         setShowDayComplete(true);
       }
 
@@ -217,8 +215,8 @@ const App: React.FC = () => {
     setShowLevelUp(false);
     if (pendingDayComplete) {
       setPendingDayComplete(false);
-      // Ускоренный показ успеха цикла после уровня
-      setTimeout(() => setShowDayComplete(true), 150);
+      // Ускоренный переход к DayComplete
+      setTimeout(() => setShowDayComplete(true), 50);
     }
   };
 

@@ -11,7 +11,7 @@ interface DayCompleteOverlayProps {
 
 export const DayCompleteOverlay: React.FC<DayCompleteOverlayProps> = ({ streak, bonusXp, onClose, isFirstDaySuccess }) => {
   return (
-    <div className="fixed inset-0 bg-[#0E1015] z-[300] flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 bg-[#0E1015] z-[500] flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-200">
       <div className="relative w-full max-w-xs flex flex-col items-center gap-8 text-center">
         
         <div className="relative w-24 h-24 flex items-center justify-center">
