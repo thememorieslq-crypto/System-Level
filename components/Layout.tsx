@@ -24,29 +24,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
         <nav className="bg-[#12151E] border-t border-white/5 flex items-stretch justify-around z-50 shrink-0" 
              style={{ 
                paddingBottom: 'env(safe-area-inset-bottom, 20px)',
-               minHeight: 'calc(70px + env(safe-area-inset-bottom, 0px))' 
+               minHeight: 'calc(75px + env(safe-area-inset-bottom, 0px))' 
              }}>
           
           <button 
             onClick={() => onTabChange('system')}
-            className={`relative flex flex-col items-center justify-center gap-1.5 transition-all flex-1 pt-4 pb-2 active:scale-95 ${activeTab === 'system' ? 'text-[#5B8CFF]' : 'text-gray-500'}`}
+            className={`relative flex flex-col items-center justify-center gap-1 transition-all flex-1 pt-4 pb-2 active:scale-95 ${activeTab === 'system' ? 'text-[#5B8CFF]' : 'text-[#4A5568]'}`}
           >
             {activeTab === 'system' && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-[#5B8CFF] shadow-[0_0_12px_rgba(91,140,255,1)] rounded-b-full"></div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-[#5B8CFF] shadow-[0_0_15px_rgba(91,140,255,1)] rounded-b-sm"></div>
             )}
-            <LayoutGrid size={24} strokeWidth={activeTab === 'system' ? 2.5 : 2} className={activeTab === 'system' ? 'drop-shadow-[0_0_8px_rgba(91,140,255,0.4)]' : ''} />
-            <span className="mono text-[9px] font-black tracking-[0.15em] uppercase">SYS_CORE</span>
+            <LayoutGrid size={26} strokeWidth={activeTab === 'system' ? 2.5 : 2} />
+            <span className="mono text-[10px] font-black tracking-[0.1em] uppercase">SYS_CORE</span>
           </button>
 
           <button 
             onClick={() => onTabChange('profile')}
-            className={`relative flex flex-col items-center justify-center gap-1.5 transition-all flex-1 pt-4 pb-2 active:scale-95 ${activeTab === 'profile' ? 'text-[#5B8CFF]' : 'text-gray-500'}`}
+            className={`relative flex flex-col items-center justify-center gap-1 transition-all flex-1 pt-4 pb-2 active:scale-95 ${activeTab === 'profile' ? 'text-[#5B8CFF]' : 'text-[#4A5568]'}`}
           >
             {activeTab === 'profile' && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-[#5B8CFF] shadow-[0_0_12px_rgba(91,140,255,1)] rounded-b-full"></div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-[#5B8CFF] shadow-[0_0_15px_rgba(91,140,255,1)] rounded-b-sm"></div>
             )}
-            <UserCircle2 size={24} strokeWidth={activeTab === 'profile' ? 2.5 : 2} className={activeTab === 'profile' ? 'drop-shadow-[0_0_8px_rgba(91,140,255,0.4)]' : ''} />
-            <span className="mono text-[9px] font-black tracking-[0.15em] uppercase">USR_DATA</span>
+            <UserCircle2 size={26} strokeWidth={activeTab === 'profile' ? 2.5 : 2} />
+            <span className="mono text-[10px] font-black tracking-[0.1em] uppercase">USR_DATA</span>
           </button>
         </nav>
       )}

@@ -135,7 +135,9 @@ const App: React.FC = () => {
   };
 
   const handleToggleHardcore = () => {
+    // Блокировка переключения, если хоть одно задание выполнено
     if (user.quests.some(q => q.completed)) return;
+    
     const newState = !user.hardcoreActive;
     setUser(prev => {
         const updatedQuests = prev.quests.map(q => {
@@ -186,11 +188,13 @@ const App: React.FC = () => {
         levelUpDetected = true;
       }
 
-      // Немедленное управление оверлеями
+      // Немедленное и синхронное управление оверлеями
       if (levelUpDetected) {
         setShowLevelUp(true);
+        // Если завершен и цикл, ставим в очередь
         if (cycleJustFinished) setPendingDayComplete(true);
       } else if (cycleJustFinished) {
+        // Если уровня нет, сразу показываем успех цикла
         setShowDayComplete(true);
       }
 
@@ -213,7 +217,8 @@ const App: React.FC = () => {
     setShowLevelUp(false);
     if (pendingDayComplete) {
       setPendingDayComplete(false);
-      setShowDayComplete(true);
+      // Ускоренный показ успеха цикла после уровня
+      setTimeout(() => setShowDayComplete(true), 150);
     }
   };
 

@@ -19,7 +19,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
   const completedCount = user.quests.filter(q => q.completed).length;
   const allCompleted = user.quests.length > 0 && completedCount === user.quests.length;
-  const isLocked = completedCount > 0;
+  // Блокировка кнопки, если есть выполненные квесты
+  const isHardcoreLocked = user.quests.some(q => q.completed);
   
   const roadmapRef = useRef<HTMLDivElement>(null);
   const [timeToNextDay, setTimeToNextDay] = useState('');
@@ -117,18 +118,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                 </div>
             </div>
           </div>
-          <div className="flex flex-col items-end text-right">
+          <div className="flex flex-col items-end text-right gap-2">
              <button 
-                disabled={isLocked}
+                disabled={isHardcoreLocked}
                 onClick={onToggleHardcore}
-                className={`flex items-center gap-1.5 px-3 py-1.5 tech-border mono text-[7px] font-black uppercase mb-2 transition-all group active:scale-90 ${
+                className={`flex items-center gap-2 px-3 py-1.5 border mono text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(0,0,0,0.5)] active:scale-95 ${
                     user.hardcoreActive 
-                    ? 'bg-red-600/20 border-red-500 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
-                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-red-500/50'
+                    ? 'bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' 
+                    : isHardcoreLocked 
+                        ? 'bg-white/5 border-white/10 text-gray-700 opacity-50 cursor-not-allowed'
+                        : 'bg-[#1A1F2E] border-[#5B8CFF]/30 text-[#5B8CFF] hover:border-[#5B8CFF]'
                 }`}
              >
-                <Flame size={10} className={user.hardcoreActive ? 'animate-pulse' : 'group-hover:text-red-500'} />
-                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_MODE'}
+                <Flame size={12} className={user.hardcoreActive ? 'animate-pulse fill-white' : ''} />
+                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_OFF'}
              </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
@@ -184,7 +187,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
       {/* CONTENT AREA */}
       <div className="flex flex-col gap-2.5 flex-1 overflow-y-auto hide-scrollbar pb-8">
         {allCompleted ? (
-            <div className="p-6 tech-border bg-[#141824] flex flex-col items-center gap-6 text-center animate-in zoom-in duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <div className="p-6 tech-border bg-[#141824] flex flex-col items-center gap-6 text-center animate-in zoom-in duration-300 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                <div className="flex flex-col gap-1 items-center">
                   <CheckCircle2 size={32} className="text-[#5B8CFF] animate-bounce" />
                   <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight italic">PHASE_SECURED</h3>
