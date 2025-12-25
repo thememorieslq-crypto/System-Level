@@ -2,9 +2,12 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const getSystemMessage = async (prompt: string): Promise<string> => {
-  // Creating instance right before call as per performance and key-selection rules.
-  // Using the exact pattern required by instructions.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    return "Связь с центральным ядром ограничена. Протокол безопасности активен.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
@@ -16,7 +19,6 @@ export const getSystemMessage = async (prompt: string): Promise<string> => {
       }
     });
     
-    // response.text is a property, not a method.
     return response.text?.trim() || "Система готова к работе.";
   } catch (error) {
     console.error("Gemini Error:", error);

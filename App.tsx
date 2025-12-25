@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserState, ExerciseType, Quest } from './types';
-import { generateQuestsForDay, getXpRequired, checkDateDiff } from './utils/calculations';
-import { getSystemMessage } from './services/geminiService';
-import { Dashboard } from './components/Dashboard';
-import { QuestScreen } from './components/QuestScreen';
-import { Profile } from './components/Profile';
-import { SplashScreen } from './components/SplashScreen';
-import { LevelUpOverlay } from './components/LevelUpOverlay';
-import { DayCompleteOverlay } from './components/DayCompleteOverlay';
-import { Layout } from './components/Layout';
-import { Onboarding } from './components/Onboarding';
+import { UserState, ExerciseType, Quest } from './types.ts';
+import { generateQuestsForDay, getXpRequired, checkDateDiff } from './utils/calculations.ts';
+import { getSystemMessage } from './services/geminiService.ts';
+import { Dashboard } from './components/Dashboard.tsx';
+import { QuestScreen } from './components/QuestScreen.tsx';
+import { Profile } from './components/Profile.tsx';
+import { SplashScreen } from './components/SplashScreen.tsx';
+import { LevelUpOverlay } from './components/LevelUpOverlay.tsx';
+import { DayCompleteOverlay } from './components/DayCompleteOverlay.tsx';
+import { Layout } from './components/Layout.tsx';
+import { Onboarding } from './components/Onboarding.tsx';
 
 const STORAGE_KEY = 'system_level_up_v5_final';
 
