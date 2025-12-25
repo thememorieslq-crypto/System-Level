@@ -3,8 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Quest, ExerciseType, Archetype, ExerciseCategory } from '../types.ts';
 import { getXpRequired } from '../utils/calculations.ts';
 import { ARCHETYPE_MAP } from '../constants.tsx';
-import { getSystemStatusReport } from '../services/geminiService.ts';
-import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, ShoppingCart, ActivitySquare, Flame } from 'lucide-react';
+import { ChevronRight, Lock, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, FastForward, Hexagon, ShoppingCart, Zap, Flame, AlertTriangle } from 'lucide-react';
 
 interface DashboardProps {
   user: UserState;
@@ -20,23 +19,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   const completedCount = user.quests.filter(q => q.completed).length;
   const allCompleted = user.quests.length > 0 && completedCount === user.quests.length;
   
-  // Идея №2: Блокировка Hardcore модуля, если хоть одно задание выполнено
   const isHardcoreLocked = user.quests.some(q => q.completed);
   
   const roadmapRef = useRef<HTMLDivElement>(null);
   const [timeToNextDay, setTimeToNextDay] = useState('');
-  const [systemLog, setSystemLog] = useState('INIT_CORE...');
 
   const isPrestige = user.currentCycleDay > 30;
   const displayPhase = isPrestige ? `OC_MK_${user.currentCycleDay - 30}` : `PHASE_${user.currentCycleDay.toString().padStart(2, '0')}`;
 
-  useEffect(() => {
-    const fetchReport = async () => {
-        const report = await getSystemStatusReport(user.level, user.heatLevel, user.dailyAnomaly || 'NONE');
-        setSystemLog(report);
-    };
-    fetchReport();
-  }, [user.level, user.heatLevel, user.dailyAnomaly, user.currentCycleDay]);
+  // Расчет штрафа опыта на основе HeatLevel
+  const xpPenaltyPercent = Math.round(Math.max(0.1, 1 - (Math.max(0, user.heatLevel - 1) * 0.15)) * 100);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -55,7 +47,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
     return () => clearInterval(timer);
   }, []);
 
-  // Идея №5: Автоматическое центрирование текущего дня в дорожной карте
   useEffect(() => {
     if (roadmapRef.current) {
         const children = roadmapRef.current.children;
@@ -71,50 +62,70 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   }, [user.currentCycleDay]);
 
   const handleHardcoreClick = () => {
-    if (isHardcoreLocked) {
-      setSystemLog("ERROR: RE-CONFIG_BLOCKED_DURING_CYCLE");
-      return;
-    }
     onToggleHardcore();
   };
 
   return (
     <div className={`p-4 pt-6 flex flex-col gap-4 animate-in fade-in duration-700 h-full overflow-hidden relative ${user.heatLevel >= 4 ? 'system-glitch' : ''}`}>
       
-      {/* HUD INDICATORS */}
-      <div className="grid grid-cols-3 gap-2 shrink-0">
-          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
-              <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">NEURAL_SYNC</span>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <ActivitySquare size={8} className={`${user.neuralSync > 50 ? 'text-emerald-400' : 'text-orange-500'} animate-pulse`} />
-                    <span className="mono text-[8px] font-black text-white">{Math.round(user.neuralSync)}%</span>
+      {/* HUD INDICATORS GRID */}
+      <div className="grid grid-cols-2 gap-2 shrink-0">
+          
+          {/* SYSTEM HEAT (Масштаб немного уменьшен) */}
+          <div className="flex flex-col p-2 danger-corner bg-[#141824]/80 border border-white/5 col-span-2">
+              <div className="flex justify-between items-center mb-1.5">
+                  <div className="flex flex-col">
+                      <span className="mono text-[7px] font-black text-gray-500 uppercase tracking-widest">SYSTEM_HEAT</span>
+                      <span className={`mono text-[9px] font-black leading-none mt-0.5 ${user.heatLevel >= 4 ? 'text-red-500 animate-pulse' : 'text-orange-400'}`}>
+                          {user.heatLevel >= 4 ? 'CRITICAL' : user.heatLevel > 0 ? 'ACTIVE_LOAD' : 'STABLE'}
+                      </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                      <span className="mono text-[7px] font-black text-gray-500 uppercase">EFFICIENCY</span>
+                      <span className={`mono text-[11px] font-black leading-none mt-0.5 ${xpPenaltyPercent < 100 ? 'text-orange-500' : 'text-emerald-400'}`}>
+                          {xpPenaltyPercent}%
+                      </span>
                   </div>
               </div>
+              <div className="flex gap-1 items-end h-3.5">
+                {[...Array(6)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`flex-1 h-full transition-all duration-700 border border-white/5 ${
+                      user.heatLevel > i 
+                      ? (i < 3 ? 'bg-orange-500 shadow-[0_0_6px_rgba(249,161,22,0.3)]' : 'bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]') 
+                      : 'bg-white/5'
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5 opacity-60">
+                  <AlertTriangle size={7} className={user.heatLevel >= 3 ? 'text-orange-500' : 'text-gray-700'} />
+                  <span className="mono text-[6px] text-gray-500 font-bold uppercase tracking-tighter italic">
+                      SYSTEM_LOAD_AFFECTS_XP_OUTPUT
+                  </span>
+              </div>
           </div>
-          <button onClick={onOpenStore} className="flex items-center justify-between px-3 py-1.5 tech-border bg-[#5B8CFF]/5 border-[#5B8CFF]/20 active:scale-95 transition-all">
-              <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-[#5B8CFF] uppercase tracking-tighter">STORAGE</span>
-                  <ShoppingCart size={10} className="text-[#5B8CFF] mt-0.5" />
+
+          {/* STORAGE & FRAGMENTS */}
+          <button onClick={onOpenStore} className="flex items-center justify-between p-3 tech-border bg-[#5B8CFF]/5 border-[#5B8CFF]/20 active:scale-95 transition-all">
+              <div className="flex flex-col items-start">
+                  <span className="mono text-[6px] font-black text-[#5B8CFF] uppercase tracking-tighter">BLACK_MARKET</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <ShoppingCart size={10} className="text-[#5B8CFF]" />
+                    <span className="mono text-[10px] font-black text-white uppercase tracking-tighter">STORE</span>
+                  </div>
               </div>
           </button>
-          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
-              <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">FRAGMENTS</span>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Hexagon size={8} className="text-[#5B8CFF] fill-[#5B8CFF]/20" />
-                    <span className="mono text-[8px] font-black text-white">{user.coreFragments}</span>
+
+          <div className="flex items-center justify-between p-3 tech-border bg-white/5 border-white/10">
+              <div className="flex flex-col items-start">
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">CORE_FRAGS</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Hexagon size={10} className="text-[#5B8CFF] fill-[#5B8CFF]/20" />
+                    <span className="mono text-[10px] font-black text-white">{user.coreFragments}</span>
                   </div>
               </div>
-          </div>
-      </div>
-
-      {/* SYSTEM CONSOLE */}
-      <div className="bg-black/60 border border-white/5 p-2.5 flex items-start gap-3 tech-border shrink-0">
-          <Terminal size={12} className="text-[#5B8CFF] mt-0.5 animate-pulse" />
-          <div className="flex flex-col gap-0.5">
-              <span className="mono text-[6px] text-[#5B8CFF]/50 uppercase font-black tracking-[0.2em]">CORE_FEED</span>
-              <p className="mono text-[8px] text-white font-bold leading-tight tracking-tight">{systemLog}</p>
           </div>
       </div>
 
@@ -126,7 +137,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                <CalendarDays size={10} className="text-gray-600" />
                <span className="mono text-[8px] text-gray-600 font-bold uppercase tracking-widest italic">UPTIME: {user.calendarDay}D</span>
             </div>
-            <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic">CORE_INIT</h1>
+            <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic text-white">CORE_INIT</h1>
             <div className="flex items-center gap-3 mt-1">
                 <span className="mono text-[8px] text-white/50 uppercase tracking-widest font-black">LVL_{user.level}</span>
                 <div className="flex items-center gap-1.5">
@@ -151,9 +162,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
              </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
-                <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1 tracking-tighter italic">
-                    STRATEGIC_STEP
-                </span>
              </div>
           </div>
         </div>

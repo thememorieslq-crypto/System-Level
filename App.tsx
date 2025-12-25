@@ -70,18 +70,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
   }, [user]);
 
-  // Механика деградации Neural Sync со временем
-  useEffect(() => {
-    if (!user.hasInitialized) return;
-    const interval = setInterval(() => {
-      setUser(prev => ({
-        ...prev,
-        neuralSync: Math.max(10, prev.neuralSync - 0.5) // Медленно падает до 10%
-      }));
-    }, 600000); // Раз в 10 минут
-    return () => clearInterval(interval);
-  }, [user.hasInitialized]);
-
   const checkDailyRefresh = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
     if (user.lastActiveDate === today) return;
@@ -135,7 +123,6 @@ const App: React.FC = () => {
   };
 
   const handleToggleHardcore = () => {
-    // Блокировка переключения, если хоть одно задание выполнено
     if (user.quests.some(q => q.completed)) return;
     
     const newState = !user.hardcoreActive;
@@ -162,14 +149,16 @@ const App: React.FC = () => {
 
       const foundFragment = Math.random() < 0.15;
       const streakBonusMultiplier = 1 + (prev.streak * 0.05);
-      const syncMultiplier = 0.8 + (prev.neuralSync / 100) * 0.4;
+      
+      // HEAT Penalty logic: reduction factor based on heat level
+      const heatPenalty = Math.max(0.1, 1 - (Math.max(0, prev.heatLevel - 1) * 0.15));
 
-      let earnedXp = Math.round(quest.xp * streakBonusMultiplier * prev.activeAugmentations.xpMultiplier * syncMultiplier);
+      let earnedXp = Math.round(quest.xp * streakBonusMultiplier * prev.activeAugmentations.xpMultiplier * heatPenalty);
       let nextPhase = prev.currentCycleDay;
       let cycleJustFinished = false;
 
       if (!dailyDoneBefore && dailyDoneAfter) {
-        const bonus = Math.round((prev.level * 30 + (prev.currentCycleDay * 10)) * (prev.hardcoreActive ? 2 : 1));
+        const bonus = Math.round((prev.level * 30 + (prev.currentCycleDay * 10)) * (prev.hardcoreActive ? 2 : 1) * heatPenalty);
         earnedXp += bonus;
         setLastBonus(bonus);
         nextPhase = prev.currentCycleDay + 1;
@@ -188,7 +177,6 @@ const App: React.FC = () => {
         levelUpDetected = true;
       }
 
-      // Идея №3: Мгновенный запуск оверлеев
       if (levelUpDetected) {
         setShowLevelUp(true);
         if (cycleJustFinished) setPendingDayComplete(true);
@@ -204,7 +192,6 @@ const App: React.FC = () => {
         quests: updatedQuests,
         currentCycleDay: nextPhase,
         coreFragments: prev.coreFragments + (foundFragment ? 1 : 0) + (levelUpDetected ? 2 : 0),
-        neuralSync: Math.min(100, prev.neuralSync + 5),
         showLevelUp: levelUpDetected || prev.showLevelUp
       };
     });
@@ -215,7 +202,6 @@ const App: React.FC = () => {
     setShowLevelUp(false);
     if (pendingDayComplete) {
       setPendingDayComplete(false);
-      // Ускоренный переход к DayComplete
       setTimeout(() => setShowDayComplete(true), 50);
     }
   };
