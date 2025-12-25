@@ -26,11 +26,16 @@
         }
         html, body {
             height: 100%;
-            height: -webkit-fill-available;
-            overflow: hidden;
             margin: 0;
             padding: 0;
             background-color: var(--bg);
+            overflow: hidden; /* Prevent body scroll */
+            overscroll-behavior: none;
+        }
+        #root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         body {
             font-family: 'Space Grotesk', sans-serif;
@@ -38,8 +43,6 @@
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             font-size: 14px;
-            /* Use dynamic viewport height for mobile */
-            height: 100dvh;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
         

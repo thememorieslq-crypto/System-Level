@@ -15,7 +15,6 @@ import { AugmentationStore } from './components/AugmentationStore.tsx';
 import { ARCHETYPE_MAP, EXERCISE_DATA } from './constants.tsx';
 
 const STORAGE_KEY = 'system_level_up_v11_final';
-
 const ANOMALIES: AnomalyType[] = ['NEURAL_SURGE', 'GRAVITY_LEAK', 'STABLE_CORE', 'NONE'];
 
 const App: React.FC = () => {
@@ -28,7 +27,6 @@ const App: React.FC = () => {
   const [showDayComplete, setShowDayComplete] = useState(false);
   const [pendingDayComplete, setPendingDayComplete] = useState(false);
   const [lastBonus, setLastBonus] = useState(0);
-  const [displayStreak, setDisplayStreak] = useState(0);
   
   const [user, setUser] = useState<UserState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -72,6 +70,18 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
   }, [user]);
 
+  // Механика деградации Neural Sync со временем
+  useEffect(() => {
+    if (!user.hasInitialized) return;
+    const interval = setInterval(() => {
+      setUser(prev => ({
+        ...prev,
+        neuralSync: Math.max(10, prev.neuralSync - 0.5) // Медленно падает до 10%
+      }));
+    }, 600000); // Раз в 10 минут
+    return () => clearInterval(interval);
+  }, [user.hasInitialized]);
+
   const checkDailyRefresh = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
     if (user.lastActiveDate === today) return;
@@ -85,20 +95,18 @@ const App: React.FC = () => {
             level: prev.level
         };
 
+        const nextStreak = dailyDone ? prev.streak + 1 : 0;
         const randomAnomaly = ANOMALIES[Math.floor(Math.random() * ANOMALIES.length)];
         const cooledHeat = Math.max(0, prev.heatLevel - 1);
-        
-        // Если задачи не выполнены — стрик (Stability) сбрасывается
-        const nextStreak = dailyDone ? prev.streak : 0;
 
         return {
             ...prev,
-            calendarDay: prev.calendarDay + 1, // Календарь растет всегда
+            calendarDay: prev.calendarDay + 1,
             lastActiveDate: today,
             heatLevel: cooledHeat, 
             streak: nextStreak,
             dailyAnomaly: randomAnomaly,
-            // Фаза (currentCycleDay) НЕ растет автоматически при смене дня!
+            neuralSync: 100,
             quests: generateQuestsForDay(prev.level, nextStreak, 1, prev.currentCycleDay - 1, prev.hardcoreActive, cooledHeat, 1, prev.activeAugmentations.targetMultiplier, randomAnomaly),
             history: [...prev.history, newHistoryEntry].slice(-30),
             activeAugmentations: { xpMultiplier: 1, targetMultiplier: 1 }
@@ -128,40 +136,16 @@ const App: React.FC = () => {
 
   const handleToggleHardcore = () => {
     if (user.quests.some(q => q.completed)) return;
-
     const newState = !user.hardcoreActive;
     setUser(prev => {
         const updatedQuests = prev.quests.map(q => {
-            const newTarget = calculateLoad(
-                q.type, 
-                prev.level, 
-                prev.streak, 
-                1, 
-                prev.currentCycleDay - 1, 
-                newState, 
-                prev.activeAugmentations.targetMultiplier, 
-                prev.dailyAnomaly
-            );
-            
+            const newTarget = calculateLoad(q.type, prev.level, prev.streak, 1, prev.currentCycleDay - 1, newState, prev.activeAugmentations.targetMultiplier, prev.dailyAnomaly);
             const baseData = EXERCISE_DATA[q.type];
             let xpBase = baseData.xp + Math.floor(prev.streak / 2) + ((prev.currentCycleDay - 1) * 5);
             if (newState) xpBase = Math.round(xpBase * 1.5);
-            if (prev.dailyAnomaly === 'NEURAL_SURGE') xpBase = Math.round(xpBase * 1.2);
-            xpBase = Math.round(xpBase * prev.activeAugmentations.xpMultiplier);
-            const heatPenalty = Math.max(0.1, 1 - (Math.max(0, prev.heatLevel - 1) * 0.15));
-
-            return {
-                ...q,
-                target: newTarget,
-                xp: Math.round(xpBase * heatPenalty)
-            };
+            return { ...q, target: newTarget, xp: Math.round(xpBase) };
         });
-
-        return {
-            ...prev,
-            hardcoreActive: newState,
-            quests: updatedQuests
-        };
+        return { ...prev, hardcoreActive: newState, quests: updatedQuests };
     });
   };
 
@@ -176,22 +160,18 @@ const App: React.FC = () => {
 
       const foundFragment = Math.random() < 0.15;
       const streakBonusMultiplier = 1 + (prev.streak * 0.05);
-      let earnedXp = Math.round(quest.xp * streakBonusMultiplier * prev.activeAugmentations.xpMultiplier);
+      const syncMultiplier = 0.8 + (prev.neuralSync / 100) * 0.4;
 
-      let nextStreak = prev.streak;
+      let earnedXp = Math.round(quest.xp * streakBonusMultiplier * prev.activeAugmentations.xpMultiplier * syncMultiplier);
       let nextPhase = prev.currentCycleDay;
+      let cycleJustFinished = false;
 
-      // Когда день закончен — растет Стрик и Фаза
       if (!dailyDoneBefore && dailyDoneAfter) {
         const bonus = Math.round((prev.level * 30 + (prev.currentCycleDay * 10)) * (prev.hardcoreActive ? 2 : 1));
         earnedXp += bonus;
         setLastBonus(bonus);
-        setPendingDayComplete(true);
-        nextStreak = prev.streak + 1;
-        nextPhase = prev.currentCycleDay + 1; // Увеличиваем фазу только при успехе!
-        setDisplayStreak(nextStreak);
-      } else {
-          setDisplayStreak(prev.streak);
+        nextPhase = prev.currentCycleDay + 1;
+        cycleJustFinished = true;
       }
 
       let newXp = prev.xp + earnedXp;
@@ -206,8 +186,13 @@ const App: React.FC = () => {
         levelUpDetected = true;
       }
 
-      if (levelUpDetected) setShowLevelUp(true);
-      else if (!dailyDoneBefore && dailyDoneAfter) setShowDayComplete(true);
+      // Немедленное управление оверлеями
+      if (levelUpDetected) {
+        setShowLevelUp(true);
+        if (cycleJustFinished) setPendingDayComplete(true);
+      } else if (cycleJustFinished) {
+        setShowDayComplete(true);
+      }
 
       return {
         ...prev,
@@ -215,10 +200,9 @@ const App: React.FC = () => {
         totalXp: prev.totalXp + earnedXp,
         level: newLevel,
         quests: updatedQuests,
-        streak: nextStreak,
         currentCycleDay: nextPhase,
         coreFragments: prev.coreFragments + (foundFragment ? 1 : 0) + (levelUpDetected ? 2 : 0),
-        neuralSync: Math.min(100, prev.neuralSync + (dailyDoneAfter ? 2 : 0.5)),
+        neuralSync: Math.min(100, prev.neuralSync + 5),
         showLevelUp: levelUpDetected || prev.showLevelUp
       };
     });
@@ -228,7 +212,8 @@ const App: React.FC = () => {
   const handleCloseLevelUp = () => {
     setShowLevelUp(false);
     if (pendingDayComplete) {
-      setTimeout(() => { setShowDayComplete(true); setPendingDayComplete(false); }, 300);
+      setPendingDayComplete(false);
+      setShowDayComplete(true);
     }
   };
 
@@ -279,7 +264,7 @@ const App: React.FC = () => {
       {user.level >= 5 && !user.archetype && <ClassSelectionOverlay onSelect={(a) => setUser(p => ({ ...p, archetype: a }))} />}
       {currentQuest && <QuestScreen quest={currentQuest} onComplete={() => handleCompleteQuest(currentQuest.id)} onCancel={() => setCurrentQuest(null)} />}
       {showLevelUp && <LevelUpOverlay level={user.level} onClose={handleCloseLevelUp} />}
-      {showDayComplete && <DayCompleteOverlay streak={displayStreak} bonusXp={lastBonus} onClose={() => setShowDayComplete(false)} />}
+      {showDayComplete && <DayCompleteOverlay streak={user.streak} bonusXp={lastBonus} onClose={() => setShowDayComplete(false)} isFirstDaySuccess={user.calendarDay === 1} />}
     </Layout>
   );
 };

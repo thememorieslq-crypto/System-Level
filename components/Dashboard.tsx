@@ -4,7 +4,7 @@ import { UserState, Quest, ExerciseType, Archetype, ExerciseCategory } from '../
 import { getXpRequired } from '../utils/calculations.ts';
 import { ARCHETYPE_MAP } from '../constants.tsx';
 import { getSystemStatusReport } from '../services/geminiService.ts';
-import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, ShoppingCart } from 'lucide-react';
+import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, ShoppingCart, ActivitySquare, Flame } from 'lucide-react';
 
 interface DashboardProps {
   user: UserState;
@@ -21,7 +21,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   const allCompleted = user.quests.length > 0 && completedCount === user.quests.length;
   const isLocked = completedCount > 0;
   
-  const [viewingCycle, setViewingCycle] = useState(user.currentCycleDay);
   const roadmapRef = useRef<HTMLDivElement>(null);
   const [timeToNextDay, setTimeToNextDay] = useState('');
   const [systemLog, setSystemLog] = useState('INIT_CORE...');
@@ -55,18 +54,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
   }, []);
 
   useEffect(() => {
-    const center = () => {
-      if (roadmapRef.current) {
-        const index = user.currentCycleDay - 1;
-        const activeElement = roadmapRef.current.children[index] as HTMLElement;
-        if (activeElement) {
-          activeElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
-      }
-    };
-    const t = setTimeout(center, 400);
-    setViewingCycle(user.currentCycleDay);
-    return () => clearTimeout(t);
+    if (roadmapRef.current) {
+        const active = roadmapRef.current.children[user.currentCycleDay - 1] as HTMLElement;
+        if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
   }, [user.currentCycleDay]);
 
   return (
@@ -74,13 +65,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
       
       {/* HUD INDICATORS */}
       <div className="grid grid-cols-3 gap-2 shrink-0">
-          <div className={`flex items-center justify-between px-3 py-1.5 tech-border ${user.heatLevel >= 4 ? 'bg-orange-600/20 border-orange-500' : 'bg-white/5 border-white/10'}`}>
+          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
               <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">HEAT_LOAD</span>
-                  <div className="flex gap-0.5 mt-0.5">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className={`w-1.5 h-1 ${i < Math.floor(user.heatLevel) ? (user.heatLevel >= 4 ? 'bg-orange-500' : 'bg-[#5B8CFF]') : 'bg-white/5'}`}></div>
-                    ))}
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase tracking-tighter">NEURAL_SYNC</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <ActivitySquare size={8} className={`${user.neuralSync > 50 ? 'text-emerald-400' : 'text-orange-500'} animate-pulse`} />
+                    <span className="mono text-[8px] font-black text-white">{Math.round(user.neuralSync)}%</span>
                   </div>
               </div>
           </div>
@@ -119,27 +109,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                <span className="mono text-[8px] text-gray-600 font-bold uppercase tracking-widest italic">UPTIME: {user.calendarDay}D</span>
             </div>
             <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic">CORE_INIT</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-3 mt-1">
                 <span className="mono text-[8px] text-white/50 uppercase tracking-widest font-black">LVL_{user.level}</span>
-                {user.archetype && <span className="mono text-[8px] font-black text-[#5B8CFF]">[{user.archetype}]</span>}
+                <div className="flex items-center gap-1.5">
+                   <ShieldAlert size={10} className="text-orange-500" />
+                   <span className="mono text-[8px] font-bold text-orange-500 uppercase tracking-tighter">STABILITY: {user.streak}D</span>
+                </div>
             </div>
           </div>
           <div className="flex flex-col items-end text-right">
              <button 
                 disabled={isLocked}
                 onClick={onToggleHardcore}
-                className={`flex items-center gap-2 px-2 py-1 border mono text-[7px] font-black uppercase mb-2 transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 tech-border mono text-[7px] font-black uppercase mb-2 transition-all group active:scale-90 ${
                     user.hardcoreActive 
-                        ? (isLocked ? 'bg-red-500/5 border-red-500/20 text-red-900' : 'bg-red-500/20 border-red-500 text-red-500 shadow-[0_0_10px_#ef4444]') 
-                        : (isLocked ? 'bg-transparent border-white/5 text-gray-800' : 'bg-transparent border-white/10 text-gray-600 active:scale-95')
+                    ? 'bg-red-600/20 border-red-500 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-red-500/50'
                 }`}
              >
-                {isLocked && <Lock size={8} />}
-                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_OFF'}
+                <Flame size={10} className={user.hardcoreActive ? 'animate-pulse' : 'group-hover:text-red-500'} />
+                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_MODE'}
              </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
-                <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1 tracking-tighter">
+                <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1 tracking-tighter italic">
                     STRATEGIC_STEP
                 </span>
              </div>
@@ -164,58 +157,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
       {/* ROADMAP */}
       <div className="flex flex-col gap-2 shrink-0">
         <div ref={roadmapRef} className="flex gap-2 overflow-x-auto hide-scrollbar py-2 px-1 snap-x touch-pan-x scroll-smooth">
-           {[...Array(user.currentCycleDay + 5)].map((_, i) => {
+           {[...Array(user.currentCycleDay + 4)].map((_, i) => {
               const c = i + 1;
               const isActive = user.currentCycleDay === c;
               const isPast = user.currentCycleDay > c;
               const isElite = c > 30;
               return (
-                <button 
+                <div 
                     key={c}
-                    onClick={() => setViewingCycle(c)}
-                    className={`min-w-[65px] aspect-square flex flex-col items-center justify-center tech-border relative transition-all duration-500 snap-center ${
+                    className={`min-w-[55px] aspect-square flex flex-col items-center justify-center tech-border relative transition-all duration-500 snap-center ${
                         isActive 
-                        ? (isElite ? 'bg-amber-400/10 border-amber-400 scale-105' : 'bg-[#5B8CFF]/15 border-[#5B8CFF] scale-105 shadow-[0_0_15px_#5B8CFF]/10') 
+                        ? (isElite ? 'bg-amber-400/10 border-amber-400 scale-105' : 'bg-[#5B8CFF]/15 border-[#5B8CFF] scale-105') 
                         : isPast 
                           ? (isElite ? 'bg-amber-400/5 border-amber-400/20' : 'bg-[#5B8CFF]/5 border-[#5B8CFF]/20') 
                           : 'bg-[#141824]/30 border-white/5 opacity-40'
                     }`}
                 >
-                    <span className={`mono text-[7px] font-black mb-1 ${isActive ? (isElite ? 'text-amber-400' : 'text-[#5B8CFF]') : 'text-gray-500'}`}>{c <= 30 ? `PH_${c}` : `OC_${c-30}`}</span>
+                    <span className={`mono text-[6px] font-black mb-1 ${isActive ? (isElite ? 'text-amber-400' : 'text-[#5B8CFF]') : 'text-gray-500'}`}>{c <= 30 ? `PH_${c}` : `OC_${c-30}`}</span>
                     {isPast ? <CheckCircle2 size={12} className={isElite ? "text-amber-500/40" : "text-[#5B8CFF]/40"} /> : isActive ? <Zap size={14} className={isElite ? "text-amber-400 animate-pulse" : "text-[#5B8CFF] animate-pulse"} /> : <Lock size={10} className="text-gray-800" />}
-                    {isActive && <div className={`absolute -bottom-1 w-full h-0.5 ${isElite ? 'bg-amber-400 shadow-[0_0_10px_#f59e0b]' : 'bg-[#5B8CFF] shadow-[0_0_10px_#5B8CFF]'}`}></div>}
-                </button>
+                </div>
               );
            })}
         </div>
       </div>
 
       {/* CONTENT AREA */}
-      <div className="flex flex-col gap-3 flex-1 overflow-y-auto hide-scrollbar pb-8">
-        {viewingCycle === user.currentCycleDay ? (
-          allCompleted ? (
+      <div className="flex flex-col gap-2.5 flex-1 overflow-y-auto hide-scrollbar pb-8">
+        {allCompleted ? (
             <div className="p-6 tech-border bg-[#141824] flex flex-col items-center gap-6 text-center animate-in zoom-in duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                <div className="flex flex-col gap-1 items-center">
                   <CheckCircle2 size={32} className="text-[#5B8CFF] animate-bounce" />
-                  <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight">PHASE_SECURED</h3>
-                  <p className="mono text-[8px] text-gray-500 uppercase">NEXT_SYNC_PROMPT: {timeToNextDay}</p>
+                  <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight italic">PHASE_SECURED</h3>
+                  <p className="mono text-[8px] text-gray-500 uppercase">MIDNIGHT_SYNC: {timeToNextDay}</p>
                </div>
                
                <div className="w-full flex flex-col gap-2">
-                  <span className="mono text-[7px] text-gray-500 uppercase tracking-widest font-black">OVERRIDE_PROTOCOLS</span>
-                  <div className="grid grid-cols-1 gap-2">
-                      <button onClick={() => onOverride('STABLE')} className="group flex items-center justify-between p-3 tech-border border-[#5B8CFF]/20 bg-[#5B8CFF]/5 active:scale-95 transition-all">
-                          <div className="flex flex-col items-start text-left">
-                              <span className="mono text-[8px] font-black uppercase text-[#5B8CFF]">ADVANCE_PHASE</span>
-                              <span className="mono text-[6px] text-gray-500 uppercase">Skip Current Challenges</span>
-                          </div>
-                          <FastForward size={14} className="text-[#5B8CFF]" />
-                      </button>
-                  </div>
+                  <button onClick={() => onOverride('STABLE')} className="group flex items-center justify-between p-3 tech-border border-[#5B8CFF]/20 bg-[#5B8CFF]/5 active:scale-95 transition-all">
+                      <div className="flex flex-col items-start text-left">
+                          <span className="mono text-[8px] font-black uppercase text-[#5B8CFF]">OVERRIDE_NEXT_PHASE</span>
+                          <span className="mono text-[6px] text-gray-500 uppercase italic">Force New Quests Now</span>
+                      </div>
+                      <FastForward size={14} className="text-[#5B8CFF]" />
+                  </button>
                </div>
             </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
+        ) : (
+            <div className="flex flex-col gap-2">
               {user.quests.map(q => (
                 <QuestEntry 
                   key={q.id} 
@@ -225,12 +212,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                 />
               ))}
             </div>
-          )
-        ) : (
-          <div className="p-10 text-center flex flex-col items-center gap-4 border border-dashed border-white/5 opacity-40">
-              <Fingerprint size={40} className="text-gray-800" />
-              <span className="mono text-[9px] font-bold uppercase tracking-widest text-gray-600 italic">PHASE_LOGS_LOCKED</span>
-          </div>
         )}
       </div>
     </div>
@@ -243,15 +224,15 @@ const QuestEntry: React.FC<{ quest: Quest; onClick: () => void; isArchetypeBonus
     <button 
       disabled={quest.completed} 
       onClick={onClick}
-      className={`w-full group relative flex items-center justify-between p-4 border-l-2 transition-all duration-300 ${
+      className={`w-full group relative flex items-center justify-between p-3.5 border-l-[2px] transition-all duration-300 ${
           quest.completed 
-            ? 'border-gray-800 bg-transparent opacity-20 scale-[0.98]' 
-            : 'border-[#5B8CFF] bg-[#141824] active:scale-[0.97] shadow-xl'
+            ? 'border-gray-800 bg-transparent opacity-20' 
+            : 'border-[#5B8CFF] bg-[#141824] active:scale-[0.98] shadow-lg'
       }`}
     >
       <div className="flex flex-col text-left">
           <div className="flex items-center gap-2 mb-1">
-              <h4 className={`text-[15px] font-black uppercase leading-tight tracking-tight ${quest.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+              <h4 className={`text-[13px] font-black uppercase leading-tight tracking-tight italic ${quest.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
                 {quest.type}
               </h4>
               {isArchetypeBonus && !quest.completed && (
@@ -263,10 +244,10 @@ const QuestEntry: React.FC<{ quest: Quest; onClick: () => void; isArchetypeBonus
           </span>
       </div>
       <div className="flex items-center gap-4">
-          <span className={`mono text-[10px] font-black ${quest.completed ? 'text-gray-600' : 'text-[#5B8CFF]'}`}>
+          <span className={`mono text-[10px] font-black ${quest.completed ? 'text-gray-600' : 'text-[#5B8CFF] glow-text'}`}>
             +{quest.xp}XP
           </span>
-          {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40 group-hover:text-[#5B8CFF]" />}
+          {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40 group-hover:text-[#5B8CFF] transition-all" />}
           {quest.completed && <CheckCircle2 size={14} className="text-emerald-500/50" />}
       </div>
     </button>
