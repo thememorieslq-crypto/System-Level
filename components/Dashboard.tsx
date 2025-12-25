@@ -4,16 +4,17 @@ import { UserState, Quest, ExerciseType, Archetype, ExerciseCategory } from '../
 import { getXpRequired } from '../utils/calculations.ts';
 import { ARCHETYPE_MAP } from '../constants.tsx';
 import { getSystemStatusReport } from '../services/geminiService.ts';
-import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, Component } from 'lucide-react';
+import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, ShoppingCart } from 'lucide-react';
 
 interface DashboardProps {
   user: UserState;
   onSelectQuest: (quest: Quest) => void;
   onOverride: (mode: 'RECOVERY' | 'STABLE' | 'OVERLOAD' | 'FORCE' | 'SAFE') => void;
   onToggleHardcore: () => void;
+  onOpenStore: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOverride, onToggleHardcore }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOverride, onToggleHardcore, onOpenStore }) => {
   const reqXp = getXpRequired(user.level);
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
   const allCompleted = user.quests.length > 0 && user.quests.every(q => q.completed);
@@ -81,12 +82,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
                   </div>
               </div>
           </div>
-          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
+          <button onClick={onOpenStore} className="flex items-center justify-between px-3 py-1.5 tech-border bg-[#5B8CFF]/5 border-[#5B8CFF]/20 active:scale-95 transition-all">
               <div className="flex flex-col">
-                  <span className="mono text-[6px] font-black text-gray-500 uppercase">SYNC</span>
-                  <span className="mono text-[8px] font-black text-[#5B8CFF] mt-0.5">{user.neuralSync}%</span>
+                  <span className="mono text-[6px] font-black text-[#5B8CFF] uppercase">MODULES</span>
+                  <ShoppingCart size={10} className="text-[#5B8CFF] mt-0.5" />
               </div>
-          </div>
+          </button>
           <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
               <div className="flex flex-col">
                   <span className="mono text-[6px] font-black text-gray-500 uppercase">CORE_FRAG</span>
@@ -118,6 +119,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
             </div>
           </div>
           <div className="flex flex-col items-end text-right">
+             <button 
+                onClick={onToggleHardcore}
+                className={`px-2 py-1 border mono text-[7px] font-black uppercase mb-2 transition-all ${user.hardcoreActive ? 'bg-red-500/20 border-red-500 text-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-transparent border-white/10 text-gray-600'}`}
+             >
+                {user.hardcoreActive ? 'HARDCORE_ON' : 'HARDCORE_OFF'}
+             </button>
              <div className="flex flex-col items-end">
                 <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
                 <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1">
@@ -210,7 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOve
         ) : (
           <div className="p-10 text-center flex flex-col items-center gap-4 border border-dashed border-white/5 opacity-40">
               <Fingerprint size={40} className="text-gray-800" />
-              <span className="mono text-[9px] font-bold uppercase tracking-widest text-gray-600 italic">LOGS_NOT_ACCESSIBLE</span>
+              <span className="mono text-[9px] font-bold uppercase tracking-widest text-gray-600 italic">PHASE_LOGS_LOCKED</span>
           </div>
         )}
       </div>

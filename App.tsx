@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { UserState, ExerciseType, Quest, Archetype, ExerciseCategory, AnomalyType } from './types.ts';
+import { UserState, ExerciseType, Quest, Archetype, ExerciseCategory, AnomalyType, Augmentation } from './types.ts';
 import { generateQuestsForDay, getXpRequired } from './utils/calculations.ts';
 import { Dashboard } from './components/Dashboard.tsx';
 import { QuestScreen } from './components/QuestScreen.tsx';
@@ -11,9 +11,10 @@ import { DayCompleteOverlay } from './components/DayCompleteOverlay.tsx';
 import { Layout } from './components/Layout.tsx';
 import { Onboarding } from './components/Onboarding.tsx';
 import { ClassSelectionOverlay } from './components/ClassSelectionOverlay.tsx';
+import { AugmentationStore } from './components/AugmentationStore.tsx';
 import { ARCHETYPE_MAP } from './constants.tsx';
 
-const STORAGE_KEY = 'system_level_up_v9_final';
+const STORAGE_KEY = 'system_level_up_v10_final';
 
 const ANOMALIES: AnomalyType[] = ['NEURAL_SURGE', 'GRAVITY_LEAK', 'STABLE_CORE', 'NONE'];
 
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'system' | 'profile'>('system');
   const [currentQuest, setCurrentQuest] = useState<Quest | null>(null);
+  const [showStore, setShowStore] = useState(false);
   
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showDayComplete, setShowDayComplete] = useState(false);
@@ -49,7 +51,8 @@ const App: React.FC = () => {
       heatLevel: 0,
       dailyAnomaly: 'NONE',
       neuralSync: 100,
-      coreFragments: 0
+      coreFragments: 0,
+      activeAugmentations: { xpMultiplier: 1, targetMultiplier: 1 }
     };
   });
 
@@ -81,7 +84,6 @@ const App: React.FC = () => {
         };
 
         const randomAnomaly = ANOMALIES[Math.floor(Math.random() * ANOMALIES.length)];
-        const loadModifier = prev.penaltyActive ? 1.15 : 1.0;
         const cooledHeat = Math.max(0, prev.heatLevel - 1);
 
         return {
@@ -90,26 +92,17 @@ const App: React.FC = () => {
             lastActiveDate: today,
             heatLevel: cooledHeat, 
             dailyAnomaly: randomAnomaly,
-            quests: generateQuestsForDay(prev.level, prev.streak, loadModifier, prev.currentCycleDay - 1, prev.hardcoreActive, cooledHeat, 1, 1, randomAnomaly),
-            history: [...prev.history, newHistoryEntry].slice(-30)
+            quests: generateQuestsForDay(prev.level, prev.streak, 1, prev.currentCycleDay - 1, prev.hardcoreActive, cooledHeat, 1, prev.activeAugmentations.targetMultiplier, randomAnomaly),
+            history: [...prev.history, newHistoryEntry].slice(-30),
+            activeAugmentations: { xpMultiplier: 1, targetMultiplier: 1 } // Сброс баффов в конце дня
         };
     });
   }, [user.lastActiveDate]);
 
   useEffect(() => {
-    const checkInterval = setInterval(() => {
-        if (user.hasInitialized) checkDailyRefresh();
-    }, 60000);
-    
-    const initialTimer = setTimeout(() => {
-      setLoading(false);
-      if (user.hasInitialized) checkDailyRefresh();
-    }, 1500);
-
-    return () => {
-        clearInterval(checkInterval);
-        clearTimeout(initialTimer);
-    };
+    const checkInterval = setInterval(() => { if (user.hasInitialized) checkDailyRefresh(); }, 60000);
+    setTimeout(() => { setLoading(false); if (user.hasInitialized) checkDailyRefresh(); }, 1500);
+    return () => clearInterval(checkInterval);
   }, [user.hasInitialized, checkDailyRefresh]);
 
   const handleInitialize = () => {
@@ -122,34 +115,30 @@ const App: React.FC = () => {
       currentCycleDay: 1,
       dailyAnomaly: 'NONE',
       quests: generateQuestsForDay(1, 0, 1, 0, false, 0),
-      neuralSync: 100,
-      coreFragments: 0
+      neuralSync: 100
     }));
   };
 
-  const handleOverrideLock = (mode: 'RECOVERY' | 'STABLE' | 'OVERLOAD' | 'FORCE' | 'SAFE') => {
+  const handleBuyAugmentation = (aug: Augmentation) => {
+    if (user.coreFragments < aug.cost) return;
+
     setUser(prev => {
-        const nextCycle = prev.currentCycleDay + 1;
-        let heatAdd = 1;
-        let syncPenalty = 0;
-        let xpMod = 1;
-        let targetMod = 1;
+        let nextHeat = prev.heatLevel;
+        let nextXpMult = prev.activeAugmentations.xpMultiplier;
+        let nextTargetMult = prev.activeAugmentations.targetMultiplier;
 
-        if (mode === 'RECOVERY') { heatAdd = 0.5; targetMod = 0.7; xpMod = 0.5; }
-        if (mode === 'OVERLOAD') { heatAdd = 2; targetMod = 1.3; xpMod = 1.5; }
-        if (mode === 'FORCE') { heatAdd = 2; syncPenalty = 5; }
-        if (mode === 'SAFE') { heatAdd = 0; syncPenalty = 10; targetMod = 0.6; xpMod = 0.3; }
+        if (aug.id === 'heatsink') nextHeat = Math.max(0, prev.heatLevel - aug.value);
+        if (aug.id === 'booster') nextXpMult = aug.value;
+        if (aug.id === 'siphon') nextTargetMult = aug.value;
 
-        if (prev.dailyAnomaly === 'STABLE_CORE') heatAdd *= 0.5;
+        const updatedQuests = generateQuestsForDay(prev.level, prev.streak, 1, prev.currentCycleDay - 1, prev.hardcoreActive, nextHeat, nextXpMult, nextTargetMult, prev.dailyAnomaly);
 
-        const newHeat = prev.heatLevel + heatAdd;
-        
         return {
             ...prev,
-            currentCycleDay: nextCycle,
-            heatLevel: newHeat,
-            neuralSync: Math.max(0, prev.neuralSync - syncPenalty),
-            quests: generateQuestsForDay(prev.level, prev.streak, 1, nextCycle - 1, prev.hardcoreActive, newHeat, xpMod, targetMod, prev.dailyAnomaly)
+            coreFragments: prev.coreFragments - aug.cost,
+            heatLevel: nextHeat,
+            activeAugmentations: { xpMultiplier: nextXpMult, targetMultiplier: nextTargetMult },
+            quests: updatedQuests
         };
     });
   };
@@ -163,17 +152,17 @@ const App: React.FC = () => {
       const dailyDoneAfter = updatedQuests.every(q => q.completed);
       const dailyDoneBefore = prev.quests.every(q => q.completed);
 
-      // Шанс выпадения фрагмента
       const foundFragment = Math.random() < 0.15;
-      
       const streakBonusMultiplier = 1 + (prev.streak * 0.05);
-      let earnedXp = Math.round(quest.xp * streakBonusMultiplier);
+      let earnedXp = Math.round(quest.xp * streakBonusMultiplier * prev.activeAugmentations.xpMultiplier);
 
+      let nextStreak = prev.streak;
       if (!dailyDoneBefore && dailyDoneAfter) {
         const bonus = Math.round((prev.level * 30 + (prev.currentCycleDay * 10)) * (prev.hardcoreActive ? 2 : 1));
         earnedXp += bonus;
         setLastBonus(bonus);
         setPendingDayComplete(true);
+        nextStreak = prev.streak + 1; // Увеличиваем стрик
       }
 
       let newXp = prev.xp + earnedXp;
@@ -197,6 +186,7 @@ const App: React.FC = () => {
         totalXp: prev.totalXp + earnedXp,
         level: newLevel,
         quests: updatedQuests,
+        streak: nextStreak,
         coreFragments: prev.coreFragments + (foundFragment ? 1 : 0) + (levelUpDetected ? 2 : 0),
         neuralSync: Math.min(100, prev.neuralSync + (dailyDoneAfter ? 2 : 0.5)),
         showLevelUp: levelUpDetected || prev.showLevelUp
@@ -207,12 +197,8 @@ const App: React.FC = () => {
 
   const handleCloseLevelUp = () => {
     setShowLevelUp(false);
-    setUser(prev => ({ ...prev, showLevelUp: false }));
     if (pendingDayComplete) {
-      setTimeout(() => {
-          setShowDayComplete(true);
-          setPendingDayComplete(false);
-      }, 400);
+      setTimeout(() => { setShowDayComplete(true); setPendingDayComplete(false); }, 300);
     }
   };
 
@@ -225,35 +211,35 @@ const App: React.FC = () => {
         <Dashboard 
           user={user} 
           onSelectQuest={setCurrentQuest} 
-          onOverride={handleOverrideLock}
-          onToggleHardcore={() => setUser(p => ({...p, hardcoreActive: !p.hardcoreActive}))}
+          onOverride={(mode) => {
+              const nextCycle = user.currentCycleDay + 1;
+              let heatAdd = mode === 'OVERLOAD' ? 2 : 1;
+              setUser(prev => ({
+                  ...prev,
+                  currentCycleDay: nextCycle,
+                  heatLevel: prev.heatLevel + heatAdd,
+                  quests: generateQuestsForDay(prev.level, prev.streak, 1, nextCycle - 1, prev.hardcoreActive, prev.heatLevel + heatAdd, prev.activeAugmentations.xpMultiplier, prev.activeAugmentations.targetMultiplier, prev.dailyAnomaly)
+              }));
+          }}
+          onToggleHardcore={() => {
+              const newState = !user.hardcoreActive;
+              setUser(prev => ({
+                ...prev,
+                hardcoreActive: newState,
+                quests: generateQuestsForDay(prev.level, prev.streak, 1, prev.currentCycleDay - 1, newState, prev.heatLevel, prev.activeAugmentations.xpMultiplier, prev.activeAugmentations.targetMultiplier, prev.dailyAnomaly)
+              }));
+          }}
+          onOpenStore={() => setShowStore(true)}
         />
       ) : (
         <Profile user={user} onReset={() => { localStorage.clear(); window.location.reload(); }} />
       )}
 
-      {currentQuest && (
-        <QuestScreen 
-          quest={currentQuest} 
-          onComplete={() => handleCompleteQuest(currentQuest.id)} 
-          onCancel={() => setCurrentQuest(null)} 
-        />
-      )}
-
-      {showLevelUp && (
-        <LevelUpOverlay 
-          level={user.level} 
-          onClose={handleCloseLevelUp} 
-        />
-      )}
-
-      {showDayComplete && (
-        <DayCompleteOverlay 
-          streak={user.streak}
-          bonusXp={lastBonus}
-          onClose={() => setShowDayComplete(false)}
-        />
-      )}
+      {showStore && <AugmentationStore user={user} onClose={() => setShowStore(false)} onBuy={handleBuyAugmentation} />}
+      {user.level >= 5 && !user.archetype && <ClassSelectionOverlay onSelect={(a) => setUser(p => ({ ...p, archetype: a }))} />}
+      {currentQuest && <QuestScreen quest={currentQuest} onComplete={() => handleCompleteQuest(currentQuest.id)} onCancel={() => setCurrentQuest(null)} />}
+      {showLevelUp && <LevelUpOverlay level={user.level} onClose={handleCloseLevelUp} />}
+      {showDayComplete && <DayCompleteOverlay streak={user.streak} bonusXp={lastBonus} onClose={() => setShowDayComplete(false)} />}
     </Layout>
   );
 };

@@ -23,6 +23,7 @@ export interface Augmentation {
   desc: string;
   cost: number;
   type: 'BUFF' | 'UTILITY';
+  value: number;
 }
 
 export interface HistoryEntry {
@@ -63,5 +64,9 @@ export interface UserState {
   heatLevel: number;
   dailyAnomaly?: AnomalyType;
   neuralSync: number;
-  coreFragments: number; // Новая валюта
+  coreFragments: number;
+  activeAugmentations: {
+    xpMultiplier: number;
+    targetMultiplier: number;
+  };
 }
