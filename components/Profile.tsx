@@ -2,15 +2,14 @@
 import React from 'react';
 import { UserState } from '../types';
 import { getXpRequired } from '../utils/calculations';
-import { LogOut, Award, Flame, Database, Cpu, Milestone, Binary, TrendingUp, Zap, Hexagon, Shield } from 'lucide-react';
+import { LogOut, Award, Flame, Database, Cpu, Milestone, Binary, TrendingUp, Zap, Hexagon, Shield, ListTodo } from 'lucide-react';
 
 export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ user, onReset }) => {
   const reqXp = getXpRequired(user.level);
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
-  const graphPoints = Array.from({ length: 12 }, (_, i) => 15 + Math.random() * 70);
 
   return (
-    <div className="p-6 pt-10 flex flex-col gap-8 animate-in fade-in duration-500">
+    <div className="p-6 pt-10 flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
       {/* User Header with Progress Ring */}
       <div className="flex items-center justify-between border-b border-[#5B8CFF]/10 pb-8">
         <div className="flex flex-col gap-2">
@@ -21,7 +20,9 @@ export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ us
             <h2 className="text-4xl font-black tracking-tighter uppercase leading-none italic">CORE_AGENT</h2>
             <div className="flex items-center gap-4">
                 <span className="mono text-[10px] text-white font-bold bg-[#5B8CFF]/20 px-2 py-1">LVL_{user.level}</span>
-                <span className="mono text-[8px] text-gray-600 font-bold uppercase tracking-widest">{user.level >= 10 ? 'OPERATIVE_ELITE' : 'RECRUIT_ALPHA'}</span>
+                <span className="mono text-[8px] text-[#5B8CFF] font-bold uppercase tracking-widest">
+                    {user.archetype ? user.archetype : 'UNASSIGNED'}
+                </span>
             </div>
         </div>
 
@@ -69,20 +70,31 @@ export const Profile: React.FC<{ user: UserState; onReset: () => void }> = ({ us
         </div>
       </div>
 
-      {/* Stability Graph Visual */}
-      <div className="flex flex-col gap-4 p-5 tech-border bg-[#0A0A0A] relative overflow-hidden group">
-        <div className="flex justify-between items-center relative z-10">
-            <div className="flex items-center gap-2">
-                <TrendingUp size={12} className="text-[#5B8CFF]" />
-                <span className="mono text-[8px] text-[#5B8CFF] font-bold uppercase tracking-widest">NEURAL_STABILITY_MAP</span>
-            </div>
+      {/* NEURAL HISTORY - NEW FEATURE */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 mb-1">
+            <ListTodo size={12} className="text-[#5B8CFF]" />
+            <span className="mono text-[8px] text-[#5B8CFF] font-bold uppercase tracking-widest">NEURAL_HISTORY_LOG</span>
         </div>
-        <div className="h-24 w-full flex items-end gap-1 mt-2">
-            {graphPoints.map((h, i) => (
-                <div key={i} className="flex-1 bg-[#5B8CFF]/10 hover:bg-[#5B8CFF]/40 transition-all cursor-pointer relative" style={{ height: `${h}%` }}>
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-[#5B8CFF]/50"></div>
+        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto hide-scrollbar border border-white/5 bg-[#0A0A0A] p-2">
+            {user.history.length > 0 ? (
+                user.history.slice().reverse().map((entry, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 border-l-2 border-[#5B8CFF]/30 bg-white/[0.02]">
+                        <div className="flex flex-col">
+                            <span className="mono text-[9px] text-white font-black italic">DAY_{entry.day}</span>
+                            <span className="mono text-[6px] text-gray-600 uppercase tracking-tighter">{entry.date}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="mono text-[9px] text-[#5B8CFF] font-bold">LVL_{entry.level}</span>
+                            <span className="mono text-[7px] text-gray-700 uppercase tracking-widest">{entry.totalXp} TOTAL_XP</span>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <div className="p-8 text-center mono text-[7px] text-gray-700 uppercase italic">
+                    NO_DATA_ARCHIVED_YET
                 </div>
-            ))}
+            )}
         </div>
       </div>
 

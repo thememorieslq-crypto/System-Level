@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserState, Quest, ExerciseType } from '../types';
-import { getXpRequired } from '../utils/calculations';
-import { ChevronRight, Lock, Terminal, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { UserState, Quest, ExerciseType, Archetype, ExerciseCategory } from '../types.ts';
+import { getXpRequired } from '../utils/calculations.ts';
+import { ARCHETYPE_MAP } from '../constants.tsx';
+import { getSystemStatusReport } from '../services/geminiService.ts';
+import { ChevronRight, Lock, Radio, Cpu, Zap, Workflow, Fingerprint, CalendarDays, CheckCircle2, ShieldAlert, Sparkles, ThermometerSnowflake, Activity, RefreshCw, FastForward, TriangleAlert, Info, Terminal, TerminalSquare, BrainCircuit, Hexagon, Component } from 'lucide-react';
 
 interface DashboardProps {
   user: UserState;
-  systemMsg: string;
   onSelectQuest: (quest: Quest) => void;
-  onOverride: () => void;
+  onOverride: (mode: 'RECOVERY' | 'STABLE' | 'OVERLOAD' | 'FORCE' | 'SAFE') => void;
+  onToggleHardcore: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, systemMsg, onSelectQuest, onOverride }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, onSelectQuest, onOverride, onToggleHardcore }) => {
   const reqXp = getXpRequired(user.level);
   const xpPercent = Math.min((user.xp / reqXp) * 100, 100);
   const allCompleted = user.quests.length > 0 && user.quests.every(q => q.completed);
@@ -19,21 +21,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, systemMsg, onSelectQ
   const [viewingCycle, setViewingCycle] = useState(user.currentCycleDay);
   const roadmapRef = useRef<HTMLDivElement>(null);
   const [timeToNextDay, setTimeToNextDay] = useState('');
-  const [isTerminalMinimized, setIsTerminalMinimized] = useState(false);
+  const [systemLog, setSystemLog] = useState('INIT_CORE...');
 
-  // Календарный день из состояния
-  const calendarDayStr = `D_${user.calendarDay.toString().padStart(2, '0')}`;
+  const isPrestige = user.currentCycleDay > 30;
+  const displayPhase = isPrestige ? `OVERCLOCK_MK_${user.currentCycleDay - 30}` : `PHASE_${user.currentCycleDay.toString().padStart(2, '0')}`;
 
-  const cleanSystemText = (text: string) => {
-    return text.replace(/\*\*|###|\*|__/g, '').trim();
-  };
-
-  // Авто-разворачивание при новом сообщении
   useEffect(() => {
-    if (systemMsg) {
-      setIsTerminalMinimized(false);
-    }
-  }, [systemMsg]);
+    const fetchReport = async () => {
+        const report = await getSystemStatusReport(user.level, user.heatLevel, user.dailyAnomaly || 'NONE');
+        setSystemLog(report);
+    };
+    fetchReport();
+  }, [user.level, user.heatLevel, user.dailyAnomaly, user.currentCycleDay]);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -44,7 +43,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, systemMsg, onSelectQ
       const diff = tomorrow.getTime() - now.getTime();
       const h = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
       const m = Math.floor((diff / (1000 * 60)) % 60).toString().padStart(2, '0');
-      const s = Math.floor((diff / 1000) % 60).toString().padStart(2, '0');
+      const s = Math.floor(diff / 1000 % 60).toString().padStart(2, '0');
       setTimeToNextDay(`${h}:${m}:${s}`);
     };
     const timer = setInterval(updateTimer, 1000);
@@ -55,94 +54,117 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, systemMsg, onSelectQ
   useEffect(() => {
     const center = () => {
       if (roadmapRef.current) {
-        const activeElement = roadmapRef.current.children[user.currentCycleDay - 1] as HTMLElement;
+        const index = user.currentCycleDay - 1;
+        const activeElement = roadmapRef.current.children[index] as HTMLElement;
         if (activeElement) {
           activeElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         }
       }
     };
-    const t = setTimeout(center, 150);
+    const t = setTimeout(center, 400);
     setViewingCycle(user.currentCycleDay);
     return () => clearTimeout(t);
   }, [user.currentCycleDay]);
 
   return (
-    <div className="p-4 pt-6 flex flex-col gap-4 animate-in fade-in duration-700 h-full overflow-hidden relative">
+    <div className={`p-4 pt-6 flex flex-col gap-4 animate-in fade-in duration-700 h-full overflow-hidden relative ${user.heatLevel >= 4 ? 'system-glitch' : ''}`}>
+      
+      {/* HUD INDICATORS */}
+      <div className="grid grid-cols-3 gap-2 shrink-0">
+          <div className={`flex items-center justify-between px-3 py-1.5 tech-border ${user.heatLevel >= 4 ? 'bg-orange-600/20 border-orange-500' : 'bg-white/5 border-white/10'}`}>
+              <div className="flex flex-col">
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase">HEAT</span>
+                  <div className="flex gap-0.5 mt-0.5">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className={`w-1.5 h-1 ${i < Math.floor(user.heatLevel) ? (user.heatLevel >= 4 ? 'bg-orange-500' : 'bg-[#5B8CFF]') : 'bg-white/5'}`}></div>
+                    ))}
+                  </div>
+              </div>
+          </div>
+          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
+              <div className="flex flex-col">
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase">SYNC</span>
+                  <span className="mono text-[8px] font-black text-[#5B8CFF] mt-0.5">{user.neuralSync}%</span>
+              </div>
+          </div>
+          <div className="flex items-center justify-between px-3 py-1.5 tech-border bg-white/5 border-white/10">
+              <div className="flex flex-col">
+                  <span className="mono text-[6px] font-black text-gray-500 uppercase">CORE_FRAG</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Hexagon size={8} className="text-[#5B8CFF] fill-[#5B8CFF]/20" />
+                    <span className="mono text-[8px] font-black text-white">{user.coreFragments}</span>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* SYSTEM CONSOLE */}
+      <div className="bg-black/60 border border-white/5 p-2.5 flex items-start gap-3 tech-border shrink-0">
+          <Terminal size={12} className="text-[#5B8CFF] mt-0.5 animate-pulse" />
+          <div className="flex flex-col gap-0.5">
+              <span className="mono text-[6px] text-[#5B8CFF]/50 uppercase font-black tracking-[0.2em]">CORE_FEED</span>
+              <p className="mono text-[8px] text-white font-bold leading-tight tracking-tight">{systemLog}</p>
+          </div>
+      </div>
+
       {/* HEADER */}
       <div className="flex flex-col gap-3 shrink-0">
         <div className="flex justify-between items-start border-b border-[#5B8CFF]/10 pb-3">
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 mb-1">
-                <CalendarDays size={10} className="text-[#5B8CFF]" />
-                <span className="mono text-[8px] text-[#5B8CFF] tracking-widest uppercase font-bold">SYSTEM_CALENDAR</span>
+            <h1 className="text-3xl font-black tracking-tighter leading-none glow-text uppercase italic">D_{user.calendarDay.toString().padStart(2, '0')}</h1>
+            <div className="flex items-center gap-2 mt-1">
+                <span className="mono text-[8px] text-gray-600 uppercase tracking-widest font-black">LVL: {user.level}</span>
+                {user.archetype && <span className="mono text-[8px] font-black text-[#5B8CFF]">[{user.archetype}]</span>}
             </div>
-            <h1 className="text-3xl font-bold tracking-tighter leading-none glow-text">{calendarDayStr}</h1>
-            <span className="mono text-[8px] text-gray-600 mt-1 uppercase tracking-widest">SYNC_LVL: {user.level}</span>
           </div>
           <div className="flex flex-col items-end text-right">
-             <div className="flex items-center gap-1.5 mb-1">
-                <span className="mono text-[8px] text-gray-500 tracking-widest uppercase font-bold">CYCLE_LOAD</span>
-                <Radio size={8} className="text-[#5B8CFF] animate-pulse" />
-             </div>
              <div className="flex flex-col items-end">
-                <span className="text-xl font-black leading-none tracking-widest text-[#5B8CFF]">PHASE_{user.currentCycleDay}</span>
+                <span className={`text-xl font-black leading-none tracking-widest ${isPrestige ? 'text-amber-400' : 'text-[#5B8CFF]'}`}>{displayPhase}</span>
                 <span className="mono text-[7px] text-gray-700 font-bold uppercase mt-1">
-                    {allCompleted ? 'STB_MODE' : 'EXEC_MODE'}
+                    {allCompleted ? 'STB_STAY' : 'EXEC_RUN'}
                 </span>
              </div>
           </div>
         </div>
 
-        {/* PROGRESS BAR - FIXED HEIGHT AND STYLING */}
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between mono text-[7px] uppercase font-bold tracking-[0.1em] text-[#5B8CFF]">
-            <span>NEURAL_SYNC</span>
-            <span className="tabular-nums">{Math.floor(user.xp)} / {reqXp} XP</span>
+        {/* PROGRESS BAR */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between mono text-[7px] uppercase font-black tracking-[0.2em] text-[#5B8CFF]/60">
+            <span>NEURAL_LOAD</span>
+            <span className="tabular-nums text-white">{Math.floor(user.xp)} / {reqXp} XP</span>
           </div>
-          <div className="h-3 tech-border p-[1.5px] bg-black/40 relative overflow-hidden">
-            {/* Background pattern */}
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #5B8CFF 0, #5B8CFF 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}></div>
-            
-            {/* The actual progress fill */}
+          <div className="h-2.5 tech-border p-[1px] bg-black/40 relative">
             <div 
-                className="h-full bg-gradient-to-r from-[#5B8CFF]/80 to-[#5B8CFF] transition-all duration-1000 ease-out relative"
+                className={`h-full transition-all duration-1000 ease-out ${isPrestige ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 'bg-gradient-to-r from-[#5B8CFF]/80 to-[#5B8CFF]'}`}
                 style={{ width: `${xpPercent}%` }}
-            >
-                {/* Gloss effect */}
-                <div className="absolute top-0 left-0 w-full h-[50%] bg-white/10"></div>
-                {/* Glow effect */}
-                <div className="absolute top-0 right-0 h-full w-4 bg-[#5B8CFF] blur-sm opacity-50"></div>
-            </div>
+            ></div>
           </div>
         </div>
       </div>
 
       {/* ROADMAP */}
       <div className="flex flex-col gap-2 shrink-0">
-        <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-                <Workflow size={9} className="text-gray-600" />
-                <span className="mono text-[7px] text-gray-600 font-bold tracking-[0.2em] uppercase">NEURAL_ROADMAP</span>
-            </div>
-        </div>
-
-        <div ref={roadmapRef} className="flex gap-2 overflow-x-auto hide-scrollbar py-2 px-1 snap-x touch-pan-x">
-           {[...Array(30)].map((_, i) => {
+        <div ref={roadmapRef} className="flex gap-2 overflow-x-auto hide-scrollbar py-2 px-1 snap-x touch-pan-x scroll-smooth">
+           {[...Array(user.currentCycleDay + 5)].map((_, i) => {
               const c = i + 1;
               const isActive = user.currentCycleDay === c;
               const isPast = user.currentCycleDay > c;
-              const isSelected = viewingCycle === c;
+              const isElite = c > 30;
               return (
                 <button 
                     key={c}
                     onClick={() => setViewingCycle(c)}
-                    className={`min-w-[75px] aspect-square flex flex-col items-center justify-center tech-border relative transition-all snap-center ${
-                        isActive ? 'bg-[#5B8CFF]/15 border-[#5B8CFF]' : isSelected ? 'bg-white/5 border-white/20' : 'bg-[#141824]/30 border-white/5 opacity-40'
+                    className={`min-w-[65px] aspect-square flex flex-col items-center justify-center tech-border relative transition-all duration-500 snap-center ${
+                        isActive 
+                        ? (isElite ? 'bg-amber-400/10 border-amber-400 scale-105' : 'bg-[#5B8CFF]/15 border-[#5B8CFF] scale-105 shadow-[0_0_15px_#5B8CFF]/10') 
+                        : isPast 
+                          ? (isElite ? 'bg-amber-400/5 border-amber-400/20' : 'bg-[#5B8CFF]/5 border-[#5B8CFF]/20') 
+                          : 'bg-[#141824]/30 border-white/5 opacity-40'
                     }`}
                 >
-                    <span className={`mono text-[8px] font-bold mb-1 ${isActive ? 'text-[#5B8CFF]' : 'text-gray-500'}`}>PH_{c.toString().padStart(2, '0')}</span>
-                    {isPast ? <Fingerprint size={14} className="text-gray-700" /> : c > user.currentCycleDay ? <Lock size={12} className="text-gray-800" /> : <Zap size={16} className="text-[#5B8CFF] animate-pulse" />}
-                    {isActive && <div className="absolute -bottom-1 w-full h-1 bg-[#5B8CFF] shadow-[0_0_12px_#5B8CFF]"></div>}
+                    <span className={`mono text-[7px] font-black mb-1 ${isActive ? (isElite ? 'text-amber-400' : 'text-[#5B8CFF]') : 'text-gray-500'}`}>{c <= 30 ? `PH_${c}` : `OC_${c-30}`}</span>
+                    {isPast ? <CheckCircle2 size={12} className={isElite ? "text-amber-500/40" : "text-[#5B8CFF]/40"} /> : isActive ? <Zap size={14} className={isElite ? "text-amber-400 animate-pulse" : "text-[#5B8CFF] animate-pulse"} /> : <Lock size={10} className="text-gray-800" />}
+                    {isActive && <div className={`absolute -bottom-1 w-full h-0.5 ${isElite ? 'bg-amber-400 shadow-[0_0_10px_#f59e0b]' : 'bg-[#5B8CFF] shadow-[0_0_10px_#5B8CFF]'}`}></div>}
                 </button>
               );
            })}
@@ -150,101 +172,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, systemMsg, onSelectQ
       </div>
 
       {/* CONTENT AREA */}
-      <div className="flex flex-col gap-3 flex-1 overflow-y-auto hide-scrollbar pb-24">
-        <div className="flex items-center gap-2 sticky top-0 bg-[#0E1015] z-10 py-1">
-          <Cpu size={9} className="text-gray-600" />
-          <span className="mono text-[7px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-            {viewingCycle === user.currentCycleDay ? (allCompleted ? 'SYS: STATUS_CLEAR' : 'SYS: TARGETS') : viewingCycle < user.currentCycleDay ? 'SYS: ARCHIVE' : `EXP: PHASE_${viewingCycle}`}
-          </span>
-          <div className="h-[0.5px] flex-1 bg-[#5B8CFF]/10"></div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {viewingCycle === user.currentCycleDay ? (
-            allCompleted ? (
-              <div className="p-8 tech-border bg-[#141824] flex flex-col items-center gap-6 text-center animate-in fade-in duration-500">
-                 <div className="flex flex-col items-center gap-2">
-                    <CheckCircle2 size={32} className="text-[#5B8CFF] opacity-80" />
-                    <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight">ALL OBJECTIVES CLEARED</h3>
-                    <p className="mono text-[8px] text-[#5B8CFF] font-bold uppercase tracking-[0.2em] italic">Current phase fully synchronized</p>
-                 </div>
-                 <div className="h-[1px] w-full bg-white/5"></div>
-                 <div className="flex flex-col gap-2">
-                    <span className="mono text-[8px] text-gray-500 uppercase">Next system sync in</span>
-                    <span className="text-4xl font-black tabular-nums text-white tracking-tighter glow-text">{timeToNextDay}</span>
-                 </div>
-                 <button 
-                    onClick={onOverride}
-                    className="w-full py-4 bg-[#5B8CFF] text-black mono text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(91,140,255,0.2)] active:scale-95 transition-all z-20"
-                 >
-                    OVERRIDE_LOCK: PH_{user.currentCycleDay + 1}
-                 </button>
-              </div>
-            ) : (
-              user.quests.map(q => <QuestEntry key={q.id} quest={q} onClick={() => onSelectQuest(q)} />)
-            )
-          ) : viewingCycle < user.currentCycleDay ? (
-            <div className="p-10 text-center flex flex-col items-center gap-4 border border-dashed border-white/5 bg-white/[0.01]">
-                <Fingerprint size={40} className="text-gray-800" />
-                <div className="flex flex-col gap-1">
-                    <span className="mono text-[9px] font-bold uppercase tracking-[0.3em] text-gray-600">PHASE ARCHIVED</span>
-                    <p className="mono text-[7px] text-gray-800 uppercase italic">Successfully committed to core database</p>
-                </div>
+      <div className="flex flex-col gap-3 flex-1 overflow-y-auto hide-scrollbar pb-8">
+        {viewingCycle === user.currentCycleDay ? (
+          allCompleted ? (
+            <div className="p-6 tech-border bg-[#141824] flex flex-col items-center gap-6 text-center animate-in zoom-in duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+               <div className="flex flex-col gap-1 items-center">
+                  <CheckCircle2 size={32} className="text-[#5B8CFF] animate-bounce" />
+                  <h3 className="text-lg font-black uppercase tracking-widest text-white leading-tight">PHASE_SECURED</h3>
+                  <p className="mono text-[8px] text-gray-500">NEXT_SYNC_PROMPT: {timeToNextDay}</p>
+               </div>
+               
+               <div className="w-full flex flex-col gap-2">
+                  <span className="mono text-[7px] text-gray-500 uppercase tracking-widest font-black">OVERRIDE_PROTOCOLS</span>
+                  <div className="grid grid-cols-1 gap-2">
+                      <button onClick={() => onOverride('STABLE')} className="group flex items-center justify-between p-3 tech-border border-[#5B8CFF]/20 bg-[#5B8CFF]/5 active:scale-95 transition-all">
+                          <div className="flex flex-col items-start text-left">
+                              <span className="mono text-[8px] font-black uppercase text-[#5B8CFF]">ADVANCE_PROTOCOL</span>
+                              <span className="mono text-[6px] text-gray-500 uppercase">Heat +1 | Phase +1</span>
+                          </div>
+                          <FastForward size={14} className="text-[#5B8CFF]" />
+                      </button>
+                  </div>
+               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 opacity-40">
-                {[ExerciseType.PushUps, ExerciseType.Squats, ExerciseType.Plank].map((type, idx) => (
-                    <div key={idx} className="p-4 tech-border border-white/5 bg-[#141824]/20 flex justify-between items-center blur-[0.5px]">
-                        <span className="text-xs font-bold uppercase text-gray-400">{type}</span>
-                        <Lock size={12} className="text-gray-800" />
-                    </div>
-                ))}
+            <div className="flex flex-col gap-2">
+              {user.quests.map(q => (
+                <QuestEntry 
+                  key={q.id} 
+                  quest={q} 
+                  onClick={() => onSelectQuest(q)} 
+                  isArchetypeBonus={user.archetype && ARCHETYPE_MAP[user.archetype] === q.category}
+                />
+              ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* FOOTER TERMINAL */}
-      <div className={`absolute bottom-0 left-0 right-0 z-[40] transition-all duration-500 ease-in-out px-4 pb-4 ${isTerminalMinimized ? 'translate-y-[calc(100%-32px)]' : 'translate-y-0'}`}>
-          <div className="tech-border bg-[#141824]/95 backdrop-blur-md border-t border-[#5B8CFF]/20 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-hidden">
-              <div className="flex items-center justify-between p-2 border-b border-white/5 bg-white/[0.02]">
-                 <div className="flex items-center gap-1.5">
-                    <Terminal size={9} className="text-[#5B8CFF]" />
-                    <span className="mono text-[7px] text-[#5B8CFF] font-black tracking-[0.2em] uppercase">SYSTEM_LOG</span>
-                 </div>
-                 <button 
-                    onClick={() => setIsTerminalMinimized(!isTerminalMinimized)}
-                    className="p-1 hover:bg-white/10 transition-colors"
-                 >
-                    {isTerminalMinimized ? <ChevronUp size={12} className="text-[#5B8CFF]" /> : <ChevronDown size={12} className="text-gray-600" />}
-                 </button>
-              </div>
-              <div className="p-2.5 h-20 overflow-y-auto hide-scrollbar">
-                <p className="mono text-[9px] leading-relaxed text-white/80 font-medium border-l border-[#5B8CFF] pl-2 italic">
-                    {cleanSystemText(systemMsg)}
-                </p>
-              </div>
+          )
+        ) : (
+          <div className="p-10 text-center flex flex-col items-center gap-4 border border-dashed border-white/5 opacity-40">
+              <Fingerprint size={40} className="text-gray-800" />
+              <span className="mono text-[9px] font-bold uppercase tracking-widest text-gray-600 italic">LOGS_NOT_ACCESSIBLE</span>
           </div>
+        )}
       </div>
     </div>
   );
 };
 
-const QuestEntry: React.FC<{ quest: Quest; onClick: () => void; isDebt?: boolean }> = ({ quest, onClick, isDebt }) => (
+const QuestEntry: React.FC<{ 
+  quest: Quest; 
+  onClick: () => void; 
+  isArchetypeBonus?: boolean;
+}> = ({ quest, onClick, isArchetypeBonus }) => (
   <button 
     disabled={quest.completed} 
     onClick={onClick}
-    className={`w-full group relative flex items-center justify-between p-4 border-l transition-all ${
-        quest.completed ? 'border-gray-800 bg-transparent opacity-10' : isDebt ? 'border-[#EF4444] bg-[#EF4444]/5' : 'border-[#5B8CFF] bg-[#1A1F2E] active:scale-[0.98]'
+    className={`w-full group relative flex items-center justify-between p-4 border-l-2 transition-all duration-300 ${
+        quest.completed ? 'border-gray-800 bg-transparent opacity-20' : 'border-[#5B8CFF] bg-[#1A1F2E] active:scale-[0.98] shadow-sm'
     }`}
   >
     <div className="flex flex-col text-left">
-        <span className="text-sm font-black uppercase tracking-tight leading-none mb-1">{quest.type}</span>
-        <span className="mono text-[8px] text-gray-500 font-bold uppercase tracking-widest">TARGET: {quest.target} UNITS</span>
+        <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-black uppercase leading-none tracking-tight">{quest.type}</span>
+            {isArchetypeBonus && !quest.completed && (
+                <div className="flex items-center gap-1 bg-[#5B8CFF]/20 px-1 border border-[#5B8CFF]/40">
+                    <Sparkles size={8} className="text-[#5B8CFF]" />
+                    <span className="mono text-[6px] font-black text-[#5B8CFF]">SYNC+</span>
+                </div>
+            )}
+        </div>
+        <span className="mono text-[8px] text-gray-500 font-bold uppercase tracking-widest">OBJ: {quest.target} {quest.type === ExerciseType.Plank ? 'SEC' : 'REP'}</span>
     </div>
     <div className="flex items-center gap-3">
-        <span className={`mono text-[9px] font-black ${isDebt ? 'text-[#EF4444]' : 'text-[#5B8CFF]'}`}>+{quest.xp}XP</span>
-        {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40" />}
+        <span className="mono text-[9px] font-black text-[#5B8CFF]">+{quest.xp}XP</span>
+        {!quest.completed && <ChevronRight size={14} className="text-[#5B8CFF]/40 group-hover:translate-x-1 transition-transform" />}
     </div>
   </button>
 );

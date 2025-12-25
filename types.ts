@@ -1,13 +1,41 @@
 
 export enum ExerciseType {
   PushUps = 'Отжимания',
+  DiamondPushUps = 'Алмазные отжимания',
   Squats = 'Приседания',
-  Plank = 'Планка'
+  Lunges = 'Выпады',
+  Plank = 'Планка',
+  Crunches = 'Скручивания'
+}
+
+export enum ExerciseCategory {
+  PUSH = 'PUSH',
+  LEGS = 'LEGS',
+  CORE = 'CORE'
+}
+
+export type Archetype = 'TITAN' | 'STRIKER' | 'SPECTRE';
+export type AnomalyType = 'NEURAL_SURGE' | 'GRAVITY_LEAK' | 'STABLE_CORE' | 'NONE';
+
+export interface Augmentation {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  type: 'BUFF' | 'UTILITY';
+}
+
+export interface HistoryEntry {
+  day: number;
+  date: string;
+  totalXp: number;
+  level: number;
 }
 
 export interface Quest {
   id: string;
   type: ExerciseType;
+  category: ExerciseCategory;
   target: number; 
   xp: number;
   completed: boolean;
@@ -20,7 +48,7 @@ export interface UserState {
   xp: number;
   totalXp: number;
   streak: number;
-  calendarDay: number; // Реальный счетчик дней, не зависящий от стрика
+  calendarDay: number;
   lastActiveDate: string | null;
   quests: Quest[];
   hasInitialized: boolean;
@@ -29,4 +57,11 @@ export interface UserState {
   showLevelUp: boolean;
   consecutiveMisses: number;
   currentCycleDay: number;
+  archetype?: Archetype;
+  history: HistoryEntry[];
+  hardcoreActive: boolean;
+  heatLevel: number;
+  dailyAnomaly?: AnomalyType;
+  neuralSync: number;
+  coreFragments: number; // Новая валюта
 }
